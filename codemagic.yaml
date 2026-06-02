@@ -1,6 +1,6 @@
 workflows:
   ios-testflight:
-    name: iOS TestFlight
+    name: iOS Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -8,29 +8,39 @@ workflows:
       flutter: 3.44.1
       xcode: 16.2
       cocoapods: default
+      vars:
+        BUNDLE_ID: com.kidsapp.kidsapp
+      # Add GEMINI_API_KEY in Codemagic UI → Settings → Environment variables
 
     scripts:
       - name: Get Flutter packages
-        script: flutter pub get
+        script: |
+          flutter pub get
 
-      - name: Install CocoaPods
+      - name: Create .env file from secret
+        script: |
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
+
+      - name: Set up iOS project
         script: |
           cd ios
-          pod repo update
+          pod repo update --silent
           pod install
 
-      - name: Build iOS (no-codesign for now)
+      - name: Build iOS (unsigned)
         script: |
-          flutter build ios --release --no-codesign
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
 
     artifacts:
-      - flutter_drive.log
       - build/ios/iphoneos/Runner.app
 
     publishing:
       email:
         recipients:
-          - your@email.com
+          - rouaa@example.com
         notify:
           success: true
           failure: true

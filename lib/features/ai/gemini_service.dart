@@ -16,7 +16,9 @@ class GeminiService {
   /// Call once at app startup
   Future<void> init() async {
     try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+      // Try .env file first (local dev), then dart-define (Codemagic/CI)
+      final apiKey = dotenv.env['GEMINI_API_KEY'] ??
+          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
       if (apiKey.isEmpty) return;
 
       _model = GenerativeModel(
