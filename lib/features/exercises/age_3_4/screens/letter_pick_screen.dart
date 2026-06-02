@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +9,10 @@ import '../../../../shared/data/word_bank.dart';
 import '../../../../shared/data/models/user_profile.dart';
 import '../../../../shared/data/repositories/profile_repository.dart';
 import '../../../../shared/widgets/celebration_overlay.dart';
+import '../../../../shared/widgets/round_complete_screen.dart';
 import '../../../ai/gemini_service.dart';
+
+const int _exercisesPerRound = 5;
 
 /// Age 3-4: The app says a letter aloud and shows it big.
 /// The child taps the correct letter from 4 colourful buttons.
@@ -28,13 +31,20 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
   UserProfile? _profile;
   List<String> _alphabet = [];
 
-  // Current round state
+  // Current exercise state
   String _targetLetter = '';
-  List<String> _choices = []; // 4 options shown to the child
-  String? _selectedLetter; // what the child tapped
+  List<String> _choices = [];
+  String? _selectedLetter;
   bool _showCelebration = false;
   bool _showWrong = false;
-  int _streak = 0; // consecutive correct answers
+  int _streak = 0;
+
+  // Round tracking
+  int _exerciseNumber = 0;       // 0â€“4 (current exercise in round)
+  int _correctInRound = 0;       // correct answers this round
+  int _pointsInRound = 0;        // total points earned this round
+  int _starsInRound = 0;         // total stars earned this round
+  bool _roundComplete = false;   // show round complete screen
 
   @override
   void initState() {
@@ -51,13 +61,34 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
     await ttsService.init();
     await ttsService.setLanguage(_profile!.language);
 
-    _nextRound();
+    _nextExercise();
   }
 
-  // Difficulty increases every 5 correct answers: 0→easy, 1→medium, 2→hard
+  // Difficulty increases every 5 correct answers: 0â†’easy, 1â†’medium, 2â†’hard
   int get _difficulty => (_streak ~/ 5).clamp(0, 2);
 
-  Future<void> _nextRound() async {
+  void _startNewRound() {
+    setState(() {
+      _exerciseNumber = 0;
+      _correctInRound = 0;
+      _pointsInRound = 0;
+      _starsInRound = 0;
+      _roundComplete = false;
+      _streak = 0;
+    });
+    _nextExercise();
+  }
+
+
+  Future<void> _nextExercise() async {
+    // Check if round is complete
+    if (_exerciseNumber >= _exercisesPerRound) {
+      setState(() => _roundComplete = true);
+      return;
+    }
+
+    setState(() => _exerciseNumber++);
+
     // Try AI first, fall back to word bank if offline
     final String target;
     if (geminiService.isAvailable) {
@@ -69,7 +100,7 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
       target = _alphabet[_random.nextInt(_alphabet.length)];
     }
 
-    // Build 3 wrong choices — must be different from target and each other
+    // Build 3 wrong choices â€” must be different from target and each other
     final wrongs = <String>[];
     while (wrongs.length < 3) {
       final candidate = _alphabet[_random.nextInt(_alphabet.length)];
@@ -96,30 +127,28 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
   }
 
   Future<void> _onChoiceTap(String letter) async {
-    if (_selectedLetter != null) return; // already answered
+    if (_selectedLetter != null) return;
     setState(() => _selectedLetter = letter);
 
     if (letter == _targetLetter) {
-      // ✅ Correct!
+      // âœ… Correct!
       _streak++;
-
-
-      // Give bonus points for streaks (every 3 correct in a row = +1 star)
       final points = 10 + (_streak >= 3 ? 5 : 0);
       final stars = _streak % 3 == 0 ? 1 : 0;
 
       await _repo.updateScore(widget.profileId, points, stars);
 
-      setState(() => _showCelebration = true);
+      setState(() {
+        _correctInRound++;
+        _pointsInRound += points;
+        _starsInRound += stars;
+        _showCelebration = true;
+      });
     } else {
-      // ❌ Wrong — shake and show feedback
+      // âŒ Wrong
       _streak = 0;
       setState(() => _showWrong = true);
-
-      // Say the correct letter so child learns
       await ttsService.speakLetter(_targetLetter);
-
-      // Hide wrong feedback after 1.5 seconds
       await Future.delayed(const Duration(milliseconds: 1500));
       if (mounted) setState(() => _showWrong = false);
       if (mounted) setState(() => _selectedLetter = null); // let them try again
@@ -132,18 +161,27 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show round complete screen after all exercises done
+    if (_roundComplete) {
+      return RoundCompleteScreen(
+        profileId: widget.profileId,
+        totalPoints: _pointsInRound,
+        totalStars: _starsInRound,
+        correctAnswers: _correctInRound,
+        totalExercises: _exercisesPerRound,
+        onPlayAgain: _startNewRound,
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
-          // ─── Main exercise UI ───────────────────────────────────────
           _buildExerciseBody(),
-
-          // ─── Celebration overlay (shown on correct answer) ──────────
           if (_showCelebration)
             CelebrationOverlay(
               pointsEarned: _pointsForRound,
               earnedStar: _streak % 3 == 0 && _streak > 0,
-              onContinue: () => _nextRound(),
+              onContinue: () => _nextExercise(),
             ),
         ],
       ),
@@ -162,7 +200,7 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            // ─── Top bar ─────────────────────────────────────────────
+            // â”€â”€â”€ Top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -171,7 +209,28 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
                     icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => context.pop(),
                   ),
-                  const Spacer(),
+                  // Exercise progress dots
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_exercisesPerRound, (i) {
+                        final done = i < _exerciseNumber;
+                        final current = i == _exerciseNumber - 1;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: current ? 20 : 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: done
+                                ? AppColors.earlyGroup
+                                : AppColors.neutral,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
                   // Streak counter
                   if (_streak > 0)
                     Container(
@@ -183,7 +242,7 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Text('🔥', style: TextStyle(fontSize: 16)),
+                          const Text('ðŸ”¥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 4),
                           Text('$_streak',
                               style: AppTextStyles.headlineMedium
@@ -197,9 +256,9 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
 
             const Spacer(),
 
-            // ─── Instruction ─────────────────────────────────────────
+            // â”€â”€â”€ Instruction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Text(
-              'Vilken bokstav är detta?',
+              'Vilken bokstav Ã¤r detta?',
               style: AppTextStyles.headlineMedium.copyWith(
                   color: AppColors.textMedium),
             ),
@@ -210,7 +269,7 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
 
             const SizedBox(height: 24),
 
-            // ─── Big letter display + speaker button ──────────────────
+            // â”€â”€â”€ Big letter display + speaker button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             GestureDetector(
               onTap: () => ttsService.speakLetter(_targetLetter),
               child: Container(
@@ -265,19 +324,19 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
                     curve: Curves.elasticOut),
 
             const SizedBox(height: 12),
-            Text('Tryck för att höra igen / Tap to hear',
+            Text('Tryck fÃ¶r att hÃ¶ra igen / Tap to hear',
                 style: AppTextStyles.bodyMedium),
 
             const Spacer(),
 
-            // ─── Wrong answer feedback ────────────────────────────────
+            // â”€â”€â”€ Wrong answer feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (_showWrong)
               const Padding(
                 padding: EdgeInsets.only(bottom: 12),
                 child: WrongAnswerFeedback(),
               ),
 
-            // ─── 4 choice buttons ─────────────────────────────────────
+            // â”€â”€â”€ 4 choice buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: GridView.count(
@@ -380,3 +439,4 @@ class _ChoiceButton extends StatelessWidget {
     );
   }
 }
+

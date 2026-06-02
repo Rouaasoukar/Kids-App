@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +9,13 @@ import '../../../../shared/data/word_bank.dart';
 import '../../../../shared/data/models/user_profile.dart';
 import '../../../../shared/data/repositories/profile_repository.dart';
 import '../../../../shared/widgets/celebration_overlay.dart';
+import '../../../../shared/widgets/round_complete_screen.dart';
 import '../../../ai/gemini_service.dart';
 
+const int _exercisesPerRound = 5;
+
 /// Age 7-16: The app reads a sentence aloud and shows an emoji.
-/// The child types the sentence — checked letter by letter as they type.
+/// The child types the sentence â€” checked letter by letter as they type.
 class SentenceTypeScreen extends StatefulWidget {
   final String profileId;
   const SentenceTypeScreen({super.key, required this.profileId});
@@ -33,7 +36,14 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
   bool _showWrong = false;
   bool _hasSubmitted = false;
   int _streak = 0;
-  bool _showAnswer = false; // "reveal answer" hint after wrong
+  bool _showAnswer = false;
+
+  // Round tracking
+  int _exerciseNumber = 0;
+  int _correctInRound = 0;
+  int _pointsInRound = 0;
+  int _starsInRound = 0;
+  bool _roundComplete = false;
 
   @override
   void initState() {
@@ -56,12 +66,31 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
     await ttsService.init();
     await ttsService.setLanguage(_profile!.language);
 
-    _nextRound();
+    _nextExercise();
+  }
+
+  void _startNewRound() {
+    setState(() {
+      _exerciseNumber = 0;
+      _correctInRound = 0;
+      _pointsInRound = 0;
+      _starsInRound = 0;
+      _roundComplete = false;
+      _streak = 0;
+    });
+    _nextExercise();
   }
 
   int get _difficulty => (_streak ~/ 3).clamp(0, 2);
 
-  Future<void> _nextRound() async {
+
+  Future<void> _nextExercise() async {
+    if (_exerciseNumber >= _exercisesPerRound) {
+      setState(() => _roundComplete = true);
+      return;
+    }
+    setState(() => _exerciseNumber++);
+
     final String sentence;
     final String emoji;
 
@@ -105,15 +134,19 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
     final targetClean = target.toLowerCase().replaceAll(RegExp(r'[.!?,]'), '');
 
     if (typedClean == targetClean) {
-      // ✅ Correct!
+      // âœ… Correct!
       _streak++;
-      // Score based on sentence length + accuracy
       final points = 30 + (target.split(' ').length * 3);
-      final stars = _streak % 2 == 0 ? 1 : 0; // star every 2 correct in a row
+      final stars = _streak % 2 == 0 ? 1 : 0;
       await _repo.updateScore(widget.profileId, points, stars);
-      setState(() => _showCelebration = true);
+      setState(() {
+        _correctInRound++;
+        _pointsInRound += points;
+        _starsInRound += stars;
+        _showCelebration = true;
+      });
     } else {
-      // ❌ Wrong
+      // âŒ Wrong
       _streak = 0;
       setState(() {
         _showWrong = true;
@@ -163,8 +196,18 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_current == null) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_roundComplete) {
+      return RoundCompleteScreen(
+        profileId: widget.profileId,
+        totalPoints: _pointsInRound,
+        totalStars: _starsInRound,
+        correctAnswers: _correctInRound,
+        totalExercises: _exercisesPerRound,
+        onPlayAgain: _startNewRound,
+      );
     }
 
     return Scaffold(
@@ -175,7 +218,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
             CelebrationOverlay(
               pointsEarned: _pointsForRound,
               earnedStar: _streak % 2 == 0 && _streak > 0,
-              onContinue: () => _nextRound(),
+              onContinue: () => _nextExercise(),
             ),
         ],
       ),
@@ -199,14 +242,33 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  // ─── Top bar ──────────────────────────────────────
+                  // â”€â”€â”€ Top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_rounded),
                         onPressed: () => context.pop(),
                       ),
-                      const Spacer(),
+                      // Progress dots
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(_exercisesPerRound, (i) {
+                            final done = i < _exerciseNumber;
+                            final current = i == _exerciseNumber - 1;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              width: current ? 20 : 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: done ? AppColors.advancedGroup : AppColors.neutral,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
                       if (_streak > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -218,7 +280,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Text('🔥',
+                              const Text('ðŸ”¥',
                                   style: TextStyle(fontSize: 16)),
                               const SizedBox(width: 4),
                               Text('$_streak',
@@ -233,14 +295,14 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
 
                   const SizedBox(height: 8),
 
-                  // ─── Instruction ──────────────────────────────────
+                  // â”€â”€â”€ Instruction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   Text('Skriv meningen! / Type the sentence!',
                       style: AppTextStyles.headlineMedium
                           .copyWith(color: AppColors.textMedium)),
 
                   const SizedBox(height: 20),
 
-                  // ─── Emoji + play button ──────────────────────────
+                  // â”€â”€â”€ Emoji + play button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   GestureDetector(
                     onTap: () => ttsService.speak(_current!.sentence),
                     child: Container(
@@ -274,7 +336,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
                               Icon(Icons.volume_up_rounded,
                                   color: AppColors.advancedGroup, size: 28),
                               const SizedBox(height: 4),
-                              Text('Tryck för att höra',
+                              Text('Tryck fÃ¶r att hÃ¶ra',
                                   style: AppTextStyles.bodyMedium),
                               Text('Tap to listen',
                                   style: AppTextStyles.bodyMedium),
@@ -287,7 +349,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ─── Coloured target (live feedback) ──────────────
+                  // â”€â”€â”€ Coloured target (live feedback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -308,7 +370,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
 
                   const SizedBox(height: 12),
 
-                  // ─── Text input ───────────────────────────────────
+                  // â”€â”€â”€ Text input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   TextField(
                     controller: _controller,
                     focusNode: _focusNode,
@@ -317,7 +379,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
                     style: AppTextStyles.bodyLarge,
                     maxLines: 2,
                     decoration: InputDecoration(
-                      hintText: 'Skriv här... / Type here...',
+                      hintText: 'Skriv hÃ¤r... / Type here...',
                       suffixIcon: IconButton(
                         icon: Icon(Icons.clear,
                             color: AppColors.textLight),
@@ -333,7 +395,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ─── Wrong feedback ───────────────────────────────
+                  // â”€â”€â”€ Wrong feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   if (_showWrong)
                     Column(
                       children: [
@@ -350,7 +412,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
                       ],
                     ),
 
-                  // ─── Revealed answer ──────────────────────────────
+                  // â”€â”€â”€ Revealed answer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   if (_showAnswer)
                     Container(
                       width: double.infinity,
@@ -365,7 +427,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Rätt svar / Correct answer:',
+                          Text('RÃ¤tt svar / Correct answer:',
                               style: AppTextStyles.bodyMedium),
                           const SizedBox(height: 4),
                           Text(_current!.sentence,
@@ -377,7 +439,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ─── Submit button ────────────────────────────────
+                  // â”€â”€â”€ Submit button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -401,3 +463,4 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
     );
   }
 }
+

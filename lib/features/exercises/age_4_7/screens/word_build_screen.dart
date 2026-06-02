@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +9,10 @@ import '../../../../shared/data/word_bank.dart';
 import '../../../../shared/data/models/user_profile.dart';
 import '../../../../shared/data/repositories/profile_repository.dart';
 import '../../../../shared/widgets/celebration_overlay.dart';
+import '../../../../shared/widgets/round_complete_screen.dart';
 import '../../../ai/gemini_service.dart';
+
+const int _exercisesPerRound = 5;
 
 /// Age 4-7: The app says a word and shows an emoji picture.
 /// The child taps letter tiles at the bottom to build the word.
@@ -28,14 +31,21 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
 
   UserProfile? _profile;
 
-  // Current round
+  // Current exercise
   WordEntry? _currentWord;
-  List<String> _letterTiles = []; // shuffled letters the child picks from
-  List<String?> _builtWord = []; // what child has built so far (nulls = empty slots)
-  List<int> _usedTileIndices = []; // which tiles have been tapped
+  List<String> _letterTiles = [];
+  List<String?> _builtWord = [];
+  List<int> _usedTileIndices = [];
   bool _showCelebration = false;
   bool _showWrong = false;
   int _streak = 0;
+
+  // Round tracking
+  int _exerciseNumber = 0;
+  int _correctInRound = 0;
+  int _pointsInRound = 0;
+  int _starsInRound = 0;
+  bool _roundComplete = false;
 
   @override
   void initState() {
@@ -51,12 +61,31 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
     await ttsService.init();
     await ttsService.setLanguage(_profile!.language);
 
-    _nextRound();
+    _nextExercise();
+  }
+
+  void _startNewRound() {
+    setState(() {
+      _exerciseNumber = 0;
+      _correctInRound = 0;
+      _pointsInRound = 0;
+      _starsInRound = 0;
+      _roundComplete = false;
+      _streak = 0;
+    });
+    _nextExercise();
   }
 
   int get _difficulty => (_streak ~/ 5).clamp(0, 2);
 
-  Future<void> _nextRound() async {
+
+  Future<void> _nextExercise() async {
+    if (_exerciseNumber >= _exercisesPerRound) {
+      setState(() => _roundComplete = true);
+      return;
+    }
+    setState(() => _exerciseNumber++);
+
     // Get word from AI or fall back to word bank
     final String word;
     final String emoji;
@@ -79,7 +108,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
     final wordEntry = WordEntry(word: word, emoji: emoji);
     final letters = word.split('');
 
-    // Add 2–3 decoy letters so it's not trivially easy
+    // Add 2â€“3 decoy letters so it's not trivially easy
     final alphabet = WordBank.alphabetFor(_profile!.language);
     final decoys = <String>[];
     while (decoys.length < 3) {
@@ -149,14 +178,19 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
     final target = _currentWord!.word;
 
     if (built == target) {
-      // ✅ Correct!
+      // âœ… Correct!
       _streak++;
-      final points = 20 + (built.length * 2); // longer words = more points
+      final points = 20 + (built.length * 2);
       final stars = _streak % 3 == 0 ? 1 : 0;
       await _repo.updateScore(widget.profileId, points, stars);
-      setState(() => _showCelebration = true);
+      setState(() {
+        _correctInRound++;
+        _pointsInRound += points;
+        _starsInRound += stars;
+        _showCelebration = true;
+      });
     } else {
-      // ❌ Wrong
+      // âŒ Wrong
       _streak = 0;
       setState(() => _showWrong = true);
       await ttsService.speak(target.toLowerCase());
@@ -179,8 +213,18 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
   @override
   Widget build(BuildContext context) {
     if (_currentWord == null) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_roundComplete) {
+      return RoundCompleteScreen(
+        profileId: widget.profileId,
+        totalPoints: _pointsInRound,
+        totalStars: _starsInRound,
+        correctAnswers: _correctInRound,
+        totalExercises: _exercisesPerRound,
+        onPlayAgain: _startNewRound,
+      );
     }
 
     return Scaffold(
@@ -191,7 +235,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
             CelebrationOverlay(
               pointsEarned: _pointsForRound,
               earnedStar: _streak % 3 == 0 && _streak > 0,
-              onContinue: () => _nextRound(),
+              onContinue: () => _nextExercise(),
             ),
         ],
       ),
@@ -210,15 +254,33 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            // ─── Top bar ──────────────────────────────────────────────
+            // â”€â”€â”€ Top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => context.pop(),
+                  ),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_exercisesPerRound, (i) {
+                        final done = i < _exerciseNumber;
+                        final current = i == _exerciseNumber - 1;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: current ? 20 : 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: done ? AppColors.middleGroup : AppColors.neutral,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                   const Spacer(),
                   if (_streak > 0)
@@ -231,7 +293,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Text('🔥', style: TextStyle(fontSize: 16)),
+                          const Text('ðŸ”¥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 4),
                           Text('$_streak',
                               style: AppTextStyles.headlineMedium
@@ -245,14 +307,14 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
 
             const Spacer(),
 
-            // ─── Instruction ──────────────────────────────────────────
+            // â”€â”€â”€ Instruction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Text('Stava ordet! / Spell the word!',
                 style: AppTextStyles.headlineMedium
                     .copyWith(color: AppColors.textMedium)),
 
             const SizedBox(height: 20),
 
-            // ─── Emoji picture + word speaker ─────────────────────────
+            // â”€â”€â”€ Emoji picture + word speaker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             GestureDetector(
               onTap: () =>
                   ttsService.speak(_currentWord!.word.toLowerCase()),
@@ -272,7 +334,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
                       Icon(Icons.volume_up_rounded,
                           color: AppColors.middleGroup, size: 22),
                       const SizedBox(width: 6),
-                      Text('Tryck för att höra / Tap to hear',
+                      Text('Tryck fÃ¶r att hÃ¶ra / Tap to hear',
                           style: AppTextStyles.bodyMedium),
                     ],
                   ),
@@ -282,7 +344,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
 
             const SizedBox(height: 28),
 
-            // ─── Word slots (where built letters appear) ──────────────
+            // â”€â”€â”€ Word slots (where built letters appear) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: _builtWord.asMap().entries.map((entry) {
@@ -335,7 +397,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
 
             const Spacer(),
 
-            // ─── Letter tiles to pick from ────────────────────────────
+            // â”€â”€â”€ Letter tiles to pick from â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Wrap(
@@ -391,3 +453,4 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
     );
   }
 }
+
