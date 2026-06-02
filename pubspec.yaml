@@ -26,10 +26,9 @@ dependencies:
   hive_flutter: ^1.1.0
 
   # --- Firebase (cloud sync) ---
-  # TODO: uncomment when google-services.json is added (iOS/Android only)
-  # firebase_core: ^3.13.1
-  # firebase_auth: ^5.5.2
-  # cloud_firestore: ^5.6.9
+  firebase_core: ^3.13.1
+  firebase_auth: ^5.5.2
+  cloud_firestore: ^5.6.9
 
   # --- Text to Speech ---
   # flutter_tts: reads letters, words and sentences aloud to the child

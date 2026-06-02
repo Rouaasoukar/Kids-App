@@ -48,7 +48,7 @@ class WordBank {
     WordEntry(word: 'BUS',    emoji: '🚌', hint: 'buss = bus'),
     WordEntry(word: 'SOL',    emoji: '☀️',  hint: 'sol = sun'),
     WordEntry(word: 'MÅN',    emoji: '🌙', hint: 'måne = moon'),
-    WordEntry(word: 'ÄPP',    emoji: '🍎', hint: 'äpple = apple'),
+    WordEntry(word: 'ÄPPLE',    emoji: '🍎', hint: 'äpple = apple'),
     WordEntry(word: 'BOLL',   emoji: '⚽', hint: 'boll = ball'),
     WordEntry(word: 'BOK',    emoji: '📚', hint: 'bok = book'),
     WordEntry(word: 'HUS',    emoji: '🏠', hint: 'hus = house'),
