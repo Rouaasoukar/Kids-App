@@ -9,6 +9,7 @@ import '../../../../shared/data/word_bank.dart';
 import '../../../../shared/data/models/user_profile.dart';
 import '../../../../shared/data/repositories/profile_repository.dart';
 import '../../../../shared/widgets/celebration_overlay.dart';
+import '../../../ai/gemini_service.dart';
 
 /// Age 4-7: The app says a word and shows an emoji picture.
 /// The child taps letter tiles at the bottom to build the word.
@@ -53,10 +54,30 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
     _nextRound();
   }
 
-  void _nextRound() {
-    final words = WordBank.wordsFor(_profile!.language);
-    final wordEntry = words[_random.nextInt(words.length)];
-    final letters = wordEntry.word.split('');
+  int get _difficulty => (_streak ~/ 5).clamp(0, 2);
+
+  Future<void> _nextRound() async {
+    // Get word from AI or fall back to word bank
+    final String word;
+    final String emoji;
+
+    if (geminiService.isAvailable) {
+      final result = await geminiService.generateWord(
+        language: _profile!.language,
+        ageGroup: _profile!.ageGroup,
+        difficulty: _difficulty,
+      );
+      word = result.word;
+      emoji = result.emoji;
+    } else {
+      final words = WordBank.wordsFor(_profile!.language);
+      final entry = words[_random.nextInt(words.length)];
+      word = entry.word;
+      emoji = entry.emoji;
+    }
+
+    final wordEntry = WordEntry(word: word, emoji: emoji);
+    final letters = word.split('');
 
     // Add 2–3 decoy letters so it's not trivially easy
     final alphabet = WordBank.alphabetFor(_profile!.language);
@@ -79,7 +100,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
 
     // Speak the word automatically
     Future.delayed(const Duration(milliseconds: 600), () {
-      ttsService.speak(wordEntry.word.toLowerCase());
+      ttsService.speak(word.toLowerCase());
     });
   }
 
@@ -170,7 +191,7 @@ class _WordBuildScreenState extends State<WordBuildScreen> {
             CelebrationOverlay(
               pointsEarned: _pointsForRound,
               earnedStar: _streak % 3 == 0 && _streak > 0,
-              onContinue: _nextRound,
+              onContinue: () => _nextRound(),
             ),
         ],
       ),

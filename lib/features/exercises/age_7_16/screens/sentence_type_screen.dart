@@ -9,6 +9,7 @@ import '../../../../shared/data/word_bank.dart';
 import '../../../../shared/data/models/user_profile.dart';
 import '../../../../shared/data/repositories/profile_repository.dart';
 import '../../../../shared/widgets/celebration_overlay.dart';
+import '../../../ai/gemini_service.dart';
 
 /// Age 7-16: The app reads a sentence aloud and shows an emoji.
 /// The child types the sentence — checked letter by letter as they type.
@@ -58,10 +59,28 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
     _nextRound();
   }
 
-  void _nextRound() {
-    final sentences = WordBank.sentencesFor(_profile!.language);
+  int get _difficulty => (_streak ~/ 3).clamp(0, 2);
+
+  Future<void> _nextRound() async {
+    final String sentence;
+    final String emoji;
+
+    if (geminiService.isAvailable) {
+      final result = await geminiService.generateSentence(
+        language: _profile!.language,
+        difficulty: _difficulty,
+      );
+      sentence = result.sentence;
+      emoji = result.emoji;
+    } else {
+      final sentences = WordBank.sentencesFor(_profile!.language);
+      final entry = sentences[_random.nextInt(sentences.length)];
+      sentence = entry.sentence;
+      emoji = entry.emoji;
+    }
+
     setState(() {
-      _current = sentences[_random.nextInt(sentences.length)];
+      _current = SentenceEntry(sentence: sentence, emoji: emoji);
       _controller.clear();
       _showCelebration = false;
       _showWrong = false;
@@ -156,7 +175,7 @@ class _SentenceTypeScreenState extends State<SentenceTypeScreen> {
             CelebrationOverlay(
               pointsEarned: _pointsForRound,
               earnedStar: _streak % 2 == 0 && _streak > 0,
-              onContinue: _nextRound,
+              onContinue: () => _nextRound(),
             ),
         ],
       ),

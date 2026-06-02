@@ -9,6 +9,7 @@ import '../../../../shared/data/word_bank.dart';
 import '../../../../shared/data/models/user_profile.dart';
 import '../../../../shared/data/repositories/profile_repository.dart';
 import '../../../../shared/widgets/celebration_overlay.dart';
+import '../../../ai/gemini_service.dart';
 
 /// Age 3-4: The app says a letter aloud and shows it big.
 /// The child taps the correct letter from 4 colourful buttons.
@@ -53,9 +54,20 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
     _nextRound();
   }
 
-  void _nextRound() {
-    // Pick a random target letter
-    final target = _alphabet[_random.nextInt(_alphabet.length)];
+  // Difficulty increases every 5 correct answers: 0→easy, 1→medium, 2→hard
+  int get _difficulty => (_streak ~/ 5).clamp(0, 2);
+
+  Future<void> _nextRound() async {
+    // Try AI first, fall back to word bank if offline
+    final String target;
+    if (geminiService.isAvailable) {
+      target = await geminiService.generateLetter(
+        language: _profile!.language,
+        difficulty: _difficulty,
+      );
+    } else {
+      target = _alphabet[_random.nextInt(_alphabet.length)];
+    }
 
     // Build 3 wrong choices — must be different from target and each other
     final wrongs = <String>[];
@@ -131,7 +143,7 @@ class _LetterPickScreenState extends State<LetterPickScreen> {
             CelebrationOverlay(
               pointsEarned: _pointsForRound,
               earnedStar: _streak % 3 == 0 && _streak > 0,
-              onContinue: _nextRound,
+              onContinue: () => _nextRound(),
             ),
         ],
       ),
