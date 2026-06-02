@@ -59,7 +59,7 @@ class ExercisePlaceholder extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  'ðŸš§ Kommer snart / Coming in Phase 2',
+                  '🚧 Kommer snart / Coming in Phase 2',
                   style: AppTextStyles.bodyLarge.copyWith(color: color),
                 ),
               ),

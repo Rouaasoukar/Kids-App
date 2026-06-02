@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -65,7 +65,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
             ),
             const Spacer(),
 
-            const Text('ðŸ”’', style: TextStyle(fontSize: 56))
+            const Text('🔒', style: TextStyle(fontSize: 56))
                 .animate(target: _isWrong ? 1 : 0)
                 .shake(hz: 4, offset: const Offset(6, 0)),
 
@@ -124,7 +124,7 @@ class _NumberPad extends StatelessWidget {
       ['1', '2', '3'],
       ['4', '5', '6'],
       ['7', '8', '9'],
-      ['', '0', 'âŒ«'],
+      ['', '0', '⌫'],
     ];
 
     return Padding(
@@ -136,8 +136,7 @@ class _NumberPad extends StatelessWidget {
             children: row.map((label) {
               if (label.isEmpty) return const SizedBox(width: 72, height: 72);
               return GestureDetector(
-                onTap: () =>
-                    label == 'âŒ«' ? onDelete() : onDigit(label),
+                onTap: () => label == '⌫' ? onDelete() : onDigit(label),
                 child: Container(
                   width: 72,
                   height: 72,
@@ -167,4 +166,3 @@ class _NumberPad extends StatelessWidget {
     );
   }
 }
-

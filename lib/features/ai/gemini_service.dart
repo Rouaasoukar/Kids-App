@@ -163,14 +163,14 @@ Example for Swedish: Hunden springer snabbt i parken.|🐕
   }
 
   ({String word, String emoji}) _fallbackWord(AppLanguage language) {
-    final words = WordBank.wordsFor(language);
+    final words = WordBank.wordsFor(language).toList(); // toList() makes it mutable
     words.shuffle();
     final w = words.first;
     return (word: w.word, emoji: w.emoji);
   }
 
   ({String sentence, String emoji}) _fallbackSentence(AppLanguage language) {
-    final sentences = WordBank.sentencesFor(language);
+    final sentences = WordBank.sentencesFor(language).toList();
     sentences.shuffle();
     final s = sentences.first;
     return (sentence: s.sentence, emoji: s.emoji);

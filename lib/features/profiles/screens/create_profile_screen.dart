@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -6,9 +6,6 @@ import 'package:uuid/uuid.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/data/models/user_profile.dart';
 import '../../../shared/data/repositories/profile_repository.dart';
-
-// TODO: Full implementation coming in next phase
-// For now this is a basic working version
 
 class CreateProfileScreen extends ConsumerStatefulWidget {
   const CreateProfileScreen({super.key});
@@ -37,7 +34,6 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
 
   Future<void> _saveProfile() async {
     if (_nameController.text.trim().isEmpty) return;
-
     setState(() => _isSaving = true);
     await _repo.init();
 
@@ -78,32 +74,37 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(hintText: 'Skriv namn hÃ¤r...'),
+              decoration: const InputDecoration(hintText: 'Skriv namn här...'),
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 24),
 
             // Age
-            Text('Ã…lder / Age: $_age Ã¥r', style: AppTextStyles.headlineMedium),
+            Text('Ålder / Age: $_age år', style: AppTextStyles.headlineMedium),
             Slider(
               value: _age.toDouble(),
               min: 3,
               max: 16,
               divisions: 13,
-              
+              activeColor: AppColors.primary,
               onChanged: (v) => setState(() => _age = v.round()),
             ),
 
             const SizedBox(height: 24),
 
             // Avatar
-            Text('VÃ¤lj avatar / Choose Avatar', style: AppTextStyles.headlineMedium),
+            Text('Välj avatar / Choose Avatar', style: AppTextStyles.headlineMedium),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: AvatarType.values.map((avatar) {
-                final emojis = {'princess': 'ðŸ‘¸', 'unicorn': 'ðŸ¦„', 'superhero': 'ðŸ¦¸', 'robot': 'ðŸ¤–'};
-                final emoji = emojis[avatar.name] ?? 'ðŸ˜€';
+                final emojis = {
+                  'princess': '👸',
+                  'unicorn': '🦄',
+                  'superhero': '🦸',
+                  'robot': '🤖',
+                };
+                final emoji = emojis[avatar.name] ?? '😀';
                 final isSelected = _selectedAvatar == avatar;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedAvatar = avatar),
@@ -111,14 +112,17 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.white,
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: isSelected ? AppColors.primary : Colors.transparent,
                         width: 3,
                       ),
                     ),
-                    child: Center(child: Text(emoji, style: const TextStyle(fontSize: 32))),
+                    child: Center(
+                        child: Text(emoji, style: const TextStyle(fontSize: 32))),
                   ),
                 );
               }).toList(),
@@ -127,18 +131,18 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
             const SizedBox(height: 24),
 
             // Language
-            Text('SprÃ¥k / Language', style: AppTextStyles.headlineMedium),
+            Text('Språk / Language', style: AppTextStyles.headlineMedium),
             const SizedBox(height: 8),
             Row(
               children: [
                 _LanguageChip(
-                  label: 'ðŸ‡¸ðŸ‡ª Svenska',
+                  label: '🇸🇪 Svenska',
                   selected: _selectedLanguage == AppLanguage.swedish,
                   onTap: () => setState(() => _selectedLanguage = AppLanguage.swedish),
                 ),
                 const SizedBox(width: 12),
                 _LanguageChip(
-                  label: 'ðŸ‡¬ðŸ‡§ English',
+                  label: '🇬🇧 English',
                   selected: _selectedLanguage == AppLanguage.english,
                   onTap: () => setState(() => _selectedLanguage = AppLanguage.english),
                 ),
@@ -149,10 +153,9 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
 
             // Passcode
             SwitchListTile(
-              title: Text('LÃ¶senkod / Passcode', style: AppTextStyles.bodyLarge),
+              title: Text('Lösenkod / Passcode', style: AppTextStyles.bodyLarge),
               subtitle: const Text('Skydda profilen med en kod'),
               value: _usePasscode,
-              
               onChanged: (v) => setState(() => _usePasscode = v),
             ),
             if (_usePasscode) ...[
@@ -168,7 +171,6 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
 
             const SizedBox(height: 32),
 
-            // Save button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -190,7 +192,8 @@ class _LanguageChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _LanguageChip({required this.label, required this.selected, required this.onTap});
+  const _LanguageChip(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +204,8 @@ class _LanguageChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.neutral),
+          border: Border.all(
+              color: selected ? AppColors.primary : AppColors.neutral),
         ),
         child: Text(
           label,
@@ -213,6 +217,3 @@ class _LanguageChip extends StatelessWidget {
     );
   }
 }
-
-
-

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,7 +8,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/data/models/user_profile.dart';
 import '../../../shared/data/repositories/profile_repository.dart';
 
-/// The first screen the app shows â€” a list of all child profiles on the device.
+/// The first screen the app shows — a list of all child profiles on the device.
 /// Tapping a profile either asks for a passcode or goes straight to home.
 class ProfilePickerScreen extends ConsumerStatefulWidget {
   const ProfilePickerScreen({super.key});
@@ -39,10 +39,8 @@ class _ProfilePickerScreenState extends ConsumerState<ProfilePickerScreen> {
 
   void _onProfileTap(UserProfile profile) {
     if (profile.passcode != null) {
-      // Profile is locked â€” go to passcode screen
       context.push('${AppRoutes.passcode}?profileId=${profile.id}');
     } else {
-      // No passcode â€” go directly to home
       context.push('${AppRoutes.home}?profileId=${profile.id}');
     }
   }
@@ -63,9 +61,8 @@ class _ProfilePickerScreenState extends ConsumerState<ProfilePickerScreen> {
             children: [
               const SizedBox(height: 40),
 
-              // --- Title ---
               Text(
-                'Vem spelar? ðŸ‘‹',
+                'Vem spelar? 👋',
                 style: AppTextStyles.displayLarge,
               ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
 
@@ -80,7 +77,6 @@ class _ProfilePickerScreenState extends ConsumerState<ProfilePickerScreen> {
 
               const SizedBox(height: 40),
 
-              // --- Profile grid or empty state ---
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -89,13 +85,12 @@ class _ProfilePickerScreenState extends ConsumerState<ProfilePickerScreen> {
                         : _buildProfileGrid(),
               ),
 
-              // --- Add new profile button ---
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     await context.push(AppRoutes.createProfile);
-                    _loadProfiles(); // refresh after creating
+                    _loadProfiles();
                   },
                   icon: const Icon(Icons.add_rounded, size: 24),
                   label: const Text('Ny profil / New Profile'),
@@ -113,10 +108,10 @@ class _ProfilePickerScreenState extends ConsumerState<ProfilePickerScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('ðŸŽ®', style: TextStyle(fontSize: 64)),
+          const Text('🎮', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
           Text(
-            'Inga profiler Ã¤nnu!\nIngen profil hittades.',
+            'Inga profiler ännu!\nNo profiles found.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyLarge,
           ),
@@ -146,7 +141,7 @@ class _ProfilePickerScreenState extends ConsumerState<ProfilePickerScreen> {
   }
 }
 
-/// One profile card in the grid â€” shows avatar emoji, name, and a lock if passcode set
+/// One profile card in the grid — shows avatar emoji, name, and a lock if passcode set
 class _ProfileCard extends StatelessWidget {
   final UserProfile profile;
   final VoidCallback onTap;
@@ -155,27 +150,19 @@ class _ProfileCard extends StatelessWidget {
 
   String get _avatarEmoji {
     switch (profile.avatarType) {
-      case AvatarType.princess:
-        return 'ðŸ‘¸';
-      case AvatarType.unicorn:
-        return 'ðŸ¦„';
-      case AvatarType.superhero:
-        return 'ðŸ¦¸';
-      case AvatarType.robot:
-        return 'ðŸ¤–';
+      case AvatarType.princess: return '👸';
+      case AvatarType.unicorn:  return '🦄';
+      case AvatarType.superhero: return '🦸';
+      case AvatarType.robot:    return '🤖';
     }
   }
 
   Color get _cardColor {
     switch (profile.avatarType) {
-      case AvatarType.princess:
-        return const Color(0xFFFFE4F0);
-      case AvatarType.unicorn:
-        return const Color(0xFFF0E4FF);
-      case AvatarType.superhero:
-        return const Color(0xFFE4F0FF);
-      case AvatarType.robot:
-        return const Color(0xFFE4FFF0);
+      case AvatarType.princess:  return const Color(0xFFFFE4F0);
+      case AvatarType.unicorn:   return const Color(0xFFF0E4FF);
+      case AvatarType.superhero: return const Color(0xFFE4F0FF);
+      case AvatarType.robot:     return const Color(0xFFE4FFF0);
     }
   }
 
@@ -198,7 +185,6 @@ class _ProfileCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Avatar emoji in a circle
             Container(
               width: 72,
               height: 72,
@@ -213,16 +199,10 @@ class _ProfileCard extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text(
-                  _avatarEmoji,
-                  style: const TextStyle(fontSize: 36),
-                ),
+                child: Text(_avatarEmoji, style: const TextStyle(fontSize: 36)),
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // Name
             Text(
               profile.name,
               style: AppTextStyles.headlineMedium,
@@ -230,10 +210,7 @@ class _ProfileCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-
             const SizedBox(height: 4),
-
-            // Lock icon if passcode is set
             if (profile.passcode != null)
               const Icon(Icons.lock_rounded, size: 16, color: AppColors.textLight)
             else
@@ -244,4 +221,3 @@ class _ProfileCard extends StatelessWidget {
     );
   }
 }
-

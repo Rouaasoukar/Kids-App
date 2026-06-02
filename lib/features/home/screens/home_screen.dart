@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -52,12 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final avatarEmojis = {
-      AvatarType.princess: 'ðŸ‘¸',
-      AvatarType.unicorn: 'ðŸ¦„',
-      AvatarType.superhero: 'ðŸ¦¸',
-      AvatarType.robot: 'ðŸ¤–',
+      AvatarType.princess: '👸',
+      AvatarType.unicorn: '🦄',
+      AvatarType.superhero: '🦸',
+      AvatarType.robot: '🤖',
     };
-    final emoji = avatarEmojis[_profile!.avatarType] ?? 'ðŸ˜€';
+    final emoji = avatarEmojis[_profile!.avatarType] ?? '😀';
 
     return Scaffold(
       body: Container(
@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).animate().scale(delay: 200.ms),
 
                 const SizedBox(height: 8),
-                Text('Tryck fÃ¶r att anpassa / Tap to customize',
+                Text('Tryck för att anpassa / Tap to customize',
                     style: AppTextStyles.bodyMedium),
 
                 const SizedBox(height: 24),
@@ -125,16 +125,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _RewardBadge(
-                      emoji: 'â­',
+                      emoji: '⭐',
                       label: '${_profile!.points}',
-                      sublabel: 'poÃ¤ng',
+                      sublabel: 'poäng',
                       color: AppColors.pointsBadge,
                     ),
                     const SizedBox(width: 16),
                     _RewardBadge(
-                      emoji: 'ðŸŒŸ',
+                      emoji: '🌟',
                       label: '${_profile!.stars}',
-                      sublabel: 'stjÃ¤rnor',
+                      sublabel: 'stjärnor',
                       color: AppColors.star,
                     ),
                   ],
@@ -144,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // --- Play button ---
                 _BigButton(
-                  emoji: 'ðŸŽ®',
+                  emoji: '🎮',
                   label: 'Spela! / Play!',
                   color: AppColors.primary,
                   onTap: () => context.push(
@@ -155,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // --- Shop button ---
                 _BigButton(
-                  emoji: 'ðŸ›ï¸',
+                  emoji: '🛍️',
                   label: 'Butik / Shop',
                   color: AppColors.secondary,
                   onTap: () => context.push(
@@ -253,4 +253,3 @@ class _BigButton extends StatelessWidget {
     );
   }
 }
-
