@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app/router.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/audio/tts_service.dart';
 
 void main() async {
   // Must be called before anything async in main()
@@ -18,6 +19,9 @@ void main() async {
 
   // Initialize Hive (local storage) in the device's documents folder
   await Hive.initFlutter();
+
+  // Initialize Text-to-Speech engine
+  await ttsService.init();
 
   // TODO: Initialize Firebase when google-services.json is added
   // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
